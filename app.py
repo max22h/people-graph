@@ -3,7 +3,7 @@ from py2neo import Graph
 
 app = Flask(__name__)
 
-graph = Graph("bolt://neo4j:7687", auth=("neo4j", "test1234"))
+graph = Graph("bolt://neo4j_container:7687", auth=("neo4j", "test1234"))
 
 @app.route("/")
 def home():
