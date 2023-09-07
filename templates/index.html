@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo4j Data Insertion</title>
+</head>
+<body>
+    <form action="/insert_data" method="POST">
+        Person: <input type="text" name="person" required><br>
+        Connections:
+        <table>
+            <tr>
+                <th>Connection</th>
+                <th>Connection Name</th>
+            </tr>
+            <tr>
+                <td><input type="text" name="connection" required></td>
+                <td><input type="text" name="connection_name" required></td>
+            </tr>
+            <!-- Add more rows as needed -->
+        </table>
+        <button type="submit">Submit</button>
+    </form>
+
+    <h2>Graph Data</h2>
+    <ul>
+        {% for result in results %}
+            <li>{{ result['n']['name'] }} -{{ result['r']['type'] }}-> {{ result['m']['name'] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
