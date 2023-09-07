@@ -1,24 +1,31 @@
-from flask import Flask, render_template, request, redirect, url_for
-from py2neo import Graph
+from flask import Flask, render_template, request, jsonify
+from neo4j import GraphDatabase
 
 app = Flask(__name__)
 
-graph = Graph("bolt://neo4j_container:7687", auth=("neo4j", "test1234"))
 
-@app.route("/")
+uri = "bolt://localhost:7687"
+username = "neo4j"
+password = "neo4jtest"
+driver = GraphDatabase.driver(uri, auth=(username, password))
+
+def get_graph_data(tx):
+    query = (
+        "MATCH (p1:Person)-[r]->(p2:Person) "
+        "RETURN p1.name AS source, type(r) AS relation, p2.name AS target"
+    )
+    result = tx.run(query)
+    return [{"source": record["source"], "relation": record["relation"], "target": record["target"]} for record in result]
+
+@app.route('/graph_data')
+def graph_data():
+    with driver.session() as session:
+        data = session.read_transaction(get_graph_data)
+    return jsonify(data)
+
+@app.route('/')
 def home():
-    results = graph.run("MATCH (n)-[r]->(m) RETURN n, r, m").data()
-    return render_template("index.html", results=results)
+    return render_template('index.html')
 
-@app.route("/insert_data", methods=['POST'])
-def insert_data():
-    person = request.form['person']
-    connections = request.form.getlist('connection')
-    connection_names = request.form.getlist('connection_name')
-    graph.run(f"CREATE (n:Person {{name: '{person}'}})")
-    for conn, conn_name in zip(connections, connection_names):
-        graph.run(f"MATCH (a:Person {{name: '{person}'}}), (b:Person {{name: '{conn}'}}) CREATE (a)-[:{conn_name}]->(b)")
-    return redirect(url_for('home'))
-
-if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0')
+if __name__ == '__main__':
+    app.run(debug=True, port=5001)

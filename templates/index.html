@@ -1,33 +1,128 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neo4j Data Insertion</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Visualization</title>
+<script src="https://d3js.org/d3.v6.min.js"></script>
+<style>
+  .link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+  }
+
+  .node {
+    fill: #ccc;
+    stroke: #fff;
+    stroke-width: 1.5px;
+  }
+
+  .node text {
+    pointer-events: none;
+    font: 10px sans-serif;
+  }
+</style>
 </head>
 <body>
-    <form action="/insert_data" method="POST">
-        Person: <input type="text" name="person" required><br>
-        Connections:
-        <table>
-            <tr>
-                <th>Connection</th>
-                <th>Connection Name</th>
-            </tr>
-            <tr>
-                <td><input type="text" name="connection" required></td>
-                <td><input type="text" name="connection_name" required></td>
-            </tr>
-            <!-- Add more rows as needed -->
-        </table>
-        <button type="submit">Submit</button>
-    </form>
 
-    <h2>Graph Data</h2>
-    <ul>
-        {% for result in results %}
-            <li>{{ result['n']['name'] }} -{{ result['r']['type'] }}-> {{ result['m']['name'] }}</li>
-        {% endfor %}
-    </ul>
+<script>
+  d3.json('/graph_data').then(data => {
+    const width = 800;
+    const height = 600;
+
+    const links = data.map(d => ({ source: d.source, target: d.target, type: d.relation }));
+
+    const nodes = Array.from(new Set(links.flatMap(l => [l.source, l.target])), name => ({ name }));
+
+    const link = d3.select("body")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .selectAll(".link")
+      .data(links)
+      .enter()
+      .append("line")
+      .attr("class", "link")
+      .attr("stroke-width", d => Math.sqrt(d.value));
+
+    const node = d3.select("body")
+      .select("svg")
+      .selectAll(".node")
+      .data(nodes)
+      .enter()
+      .append("circle")
+      .attr("class", "node")
+      .attr("r", 5)
+      .call(drag(simulation));
+
+    const label = d3.select("body")
+      .select("svg")
+      .selectAll(".label")
+      .data(nodes)
+      .enter()
+      .append("text")
+      .attr("class", "label")
+      .text(d => d.name)
+      .attr("x", 6)
+      .attr("y", 3);
+
+    const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.name))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    const node = d3.select("body")
+        .select("svg")
+        .selectAll(".node")
+        .data(nodes)
+        .enter()
+        .append("circle")
+        .attr("class", "node")
+        .attr("r", 5)
+        .call(drag(simulation)); // Now simulation is defined before this line
+
+
+    simulation.on("tick", () => {
+      link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+
+      node
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+
+      label
+        .attr("x", d => d.x)
+        .attr("y", d => d.y);
+    });
+
+    function drag(simulation) {
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      }
+
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      }
+
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+
+      return d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended);
+    }
+  });
+</script>
+
 </body>
 </html>
